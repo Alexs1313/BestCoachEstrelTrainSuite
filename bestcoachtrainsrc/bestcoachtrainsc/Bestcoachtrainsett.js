@@ -8,6 +8,7 @@ import {
   Switch,
   Linking,
   Image,
+  Platform,
 } from 'react-native';
 import Bestcoachtrainlay from '../bestcoachtraincmp/Bestcoachtrainlay';
 import { useStore } from '../bestcoachtrainst/bestCoachTrainContext';
@@ -65,34 +66,39 @@ const Bestcoachtrainsett = () => {
           />
         </View>
 
-        <TouchableOpacity
-          style={styles.besttrainCard}
-          activeOpacity={0.8}
-          onPress={() =>
-            Linking.openURL(
-              'https://apps.apple.com/us/app/best-coach-estrel-trainsuite/id6754845651',
-            )
-          }
-        >
-          <Text style={styles.besttrainLabel}>Share the app</Text>
-          <Image source={require('../../assets/images/trainsshareset.png')} />
-        </TouchableOpacity>
+        {Platform.OS === 'ios' && (
+          <TouchableOpacity
+            style={styles.besttrainCard}
+            activeOpacity={0.8}
+            onPress={() =>
+              Linking.openURL(
+                'https://apps.apple.com/us/app/best-coach-estrel-trainsuite/id6754845651',
+              )
+            }
+          >
+            <Text style={styles.besttrainLabel}>Share the app</Text>
+            <Image source={require('../../assets/images/trainsshareset.png')} />
+          </TouchableOpacity>
+        )}
 
-        <TouchableOpacity
-          style={styles.besttrainCard}
-          activeOpacity={0.8}
-          onPress={bestTrainHandleTerms}
-        >
-          <Text style={styles.besttrainLabel}>Terms of Use</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.besttrainCard}
-          activeOpacity={0.8}
-          onPress={bestTrainHandlePrivacy}
-        >
-          <Text style={styles.besttrainLabel}>Privacy Policy</Text>
-        </TouchableOpacity>
+        {Platform.OS === 'ios' && (
+          <>
+            <TouchableOpacity
+              style={styles.besttrainCard}
+              activeOpacity={0.8}
+              onPress={bestTrainHandleTerms}
+            >
+              <Text style={styles.besttrainLabel}>Terms of Use</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.besttrainCard}
+              activeOpacity={0.8}
+              onPress={bestTrainHandlePrivacy}
+            >
+              <Text style={styles.besttrainLabel}>Privacy Policy</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     </Bestcoachtrainlay>
   );

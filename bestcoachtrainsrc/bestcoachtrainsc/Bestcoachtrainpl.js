@@ -13,15 +13,17 @@ import {
   TouchableOpacity,
   View,
   FlatList,
-  useWindowDimensions,
 } from 'react-native';
 import Bestcoachtrainlay from '../bestcoachtraincmp/Bestcoachtrainlay';
 import { useStore } from '../bestcoachtrainst/bestCoachTrainContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BlurView } from '@react-native-community/blur';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, {
+  DateTimePickerAndroid,
+} from '@react-native-community/datetimepicker';
 import { useFocusEffect } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
+import Orientation from 'react-native-orientation-locker';
 
 const { height: dtstTrainHeight, width: dtstTrainWidth } =
   Dimensions.get('window');
@@ -53,18 +55,14 @@ const dtstTrainSESSION_COLORS = [
 ];
 
 const dtstTrainPad = n => (n < 10 ? `0${n}` : `${n}`);
-
 const dtstTrainSameDay = (a, b) =>
   a.getFullYear() === b.getFullYear() &&
   a.getMonth() === b.getMonth() &&
   a.getDate() === b.getDate();
-
 const dtstTrainFormatHm = d =>
   `${dtstTrainPad(d.getHours())}:${dtstTrainPad(d.getMinutes())}`;
-
 const dtstTrainAddMinutes = (date, minutes) =>
   new Date(date.getTime() + minutes * 60 * 1000);
-
 const dtstTrainDaysStrip = (centerDate = new Date(), before = 2, after = 2) => {
   const arr = [];
   for (let i = -before; i <= after; i++) {
@@ -74,7 +72,6 @@ const dtstTrainDaysStrip = (centerDate = new Date(), before = 2, after = 2) => {
   }
   return arr;
 };
-
 const dtstTrainWeekdayShort = d =>
   ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
 const dtstTrainMonthShort = d =>
@@ -98,6 +95,7 @@ const Bestcoachtrainpl = () => {
     teams: dtstTrainTeams,
     bestTrainNotificationsEnabled: dtstTrainBestTrainNotificationsEnabled,
   } = useStore();
+
   const [dtstTrainTab, dtstTrainSetTab] = useState('calendar');
   const [dtstTrainSessions, dtstTrainSetSessions] = useState([]);
   const [dtstTrainSessionModal, dtstTrainSetSessionModal] = useState(false);
@@ -112,10 +110,6 @@ const Bestcoachtrainpl = () => {
   const [dtstTrainTaskToDelete, dtstTrainSetTaskToDelete] = useState(null);
   const [dtstTrainSelectedDate, dtstTrainSetSelectedDate] = useState(
     new Date(),
-  );
-  const dtstTrainStrip = useMemo(
-    () => dtstTrainDaysStrip(dtstTrainSelectedDate, 2, 2),
-    [dtstTrainSelectedDate],
   );
   const [dtstTrainSearch, dtstTrainSetSearch] = useState('');
   const [dtstTrainTitle, dtstTrainSetTitle] = useState('');
@@ -133,7 +127,29 @@ const Bestcoachtrainpl = () => {
   const [dtstTrainTaskDate, dtstTrainSetTaskDate] = useState(new Date());
   const [dtstTrainTaskPickerShown, dtstTrainSetTaskPickerShown] =
     useState(false);
-  const { width: dtstTrainWidth } = useWindowDimensions();
+
+  useFocusEffect(
+    useCallback(() => {
+      Platform.OS === 'android' &&
+        (dtstTrainTaskModal ||
+          dtstTrainDeleteTaskModal ||
+          dtstTrainSessionModal ||
+          dtstTrainDeleteSessionModal) &&
+        Orientation.lockToPortrait();
+
+      return () => Orientation.unlockAllOrientations();
+    }, [
+      dtstTrainTaskModal,
+      dtstTrainDeleteTaskModal,
+      dtstTrainSessionModal,
+      dtstTrainDeleteSessionModal,
+    ]),
+  );
+
+  const dtstTrainStrip = useMemo(
+    () => dtstTrainDaysStrip(dtstTrainSelectedDate, 2, 2),
+    [dtstTrainSelectedDate],
+  );
 
   useEffect(() => {
     (async () => {
@@ -176,7 +192,6 @@ const Bestcoachtrainpl = () => {
       JSON.stringify(dtstTrainSessions),
     ).catch(() => {});
   }, [dtstTrainSessions]);
-
   useEffect(() => {
     AsyncStorage.setItem(
       dtstTrainSTORAGE_TASKS,
@@ -185,11 +200,8 @@ const Bestcoachtrainpl = () => {
   }, [dtstTrainTasks]);
 
   const dtstTrainOnSaveSession = () => {
-    if (dtstTrainBestTrainNotificationsEnabled) {
-      Toast.show({
-        text1: 'Session created successfully!',
-      });
-    }
+    if (dtstTrainBestTrainNotificationsEnabled)
+      Toast.show({ text1: 'Session created successfully!' });
     if (
       !dtstTrainTitle.trim() ||
       !dtstTrainSportType.trim() ||
@@ -197,12 +209,11 @@ const Bestcoachtrainpl = () => {
     )
       return;
 
-    const dtstTrainColor =
+    const color =
       dtstTrainSESSION_COLORS[
         Math.floor(Math.random() * dtstTrainSESSION_COLORS.length)
       ];
-
-    const dtstTrainNewSession = {
+    const newSession = {
       id: Date.now().toString(),
       title: dtstTrainTitle.trim(),
       sportType: dtstTrainSportType,
@@ -213,10 +224,9 @@ const Bestcoachtrainpl = () => {
       location: dtstTrainLocation.trim(),
       notes: dtstTrainNotes.trim(),
       repeat: !!dtstTrainRepeat,
-      color: dtstTrainColor,
+      color,
     };
-
-    dtstTrainSetSessions(prev => [...prev, dtstTrainNewSession]);
+    dtstTrainSetSessions(prev => [...prev, newSession]);
     dtstTrainSetTitle('');
     dtstTrainSetSportType('');
     dtstTrainSetTeamId('');
@@ -230,17 +240,13 @@ const Bestcoachtrainpl = () => {
     dtstTrainSetSessionModal(false);
   };
 
-  const dtstTrainConfirmDeleteSession = dtstTrainSession => {
-    dtstTrainSetSessionToDelete(dtstTrainSession);
+  const dtstTrainConfirmDeleteSession = s => {
+    dtstTrainSetSessionToDelete(s);
     dtstTrainSetDeleteSessionModal(true);
   };
-
   const dtstTrainOnDeleteSession = () => {
-    if (dtstTrainBestTrainNotificationsEnabled) {
-      Toast.show({
-        text1: 'Session deleted successfully!',
-      });
-    }
+    if (dtstTrainBestTrainNotificationsEnabled)
+      Toast.show({ text1: 'Session deleted successfully!' });
     dtstTrainSetSessions(prev =>
       prev.filter(s => s.id !== dtstTrainSessionToDelete.id),
     );
@@ -249,42 +255,32 @@ const Bestcoachtrainpl = () => {
   };
 
   const dtstTrainOnSaveTask = () => {
-    if (dtstTrainBestTrainNotificationsEnabled) {
-      Toast.show({
-        text1: 'Task created successfully!',
-      });
-    }
-
+    if (dtstTrainBestTrainNotificationsEnabled)
+      Toast.show({ text1: 'Task created successfully!' });
     if (!dtstTrainTaskText.trim()) return;
-    const dtstTrainT = {
+    const task = {
       id: Date.now().toString(),
       text: dtstTrainTaskText.trim(),
       dateISO: dtstTrainTaskDate.toISOString(),
       done: false,
     };
-    dtstTrainSetTasks(prev => [...prev, dtstTrainT]);
+    dtstTrainSetTasks(prev => [...prev, task]);
     dtstTrainSetTaskText('');
     dtstTrainSetTaskDate(new Date());
     dtstTrainSetTaskModal(false);
   };
 
-  const dtstTrainToggleTask = id => {
+  const dtstTrainToggleTask = id =>
     dtstTrainSetTasks(prev =>
       prev.map(t => (t.id === id ? { ...t, done: !t.done } : t)),
     );
-  };
-
   const dtstTrainConfirmDeleteTask = task => {
     dtstTrainSetTaskToDelete(task);
     dtstTrainSetDeleteTaskModal(true);
   };
-
   const dtstTrainOnDeleteTask = () => {
-    if (dtstTrainBestTrainNotificationsEnabled) {
-      Toast.show({
-        text1: 'Task deleted successfully!',
-      });
-    }
+    if (dtstTrainBestTrainNotificationsEnabled)
+      Toast.show({ text1: 'Task deleted successfully!' });
     dtstTrainSetTasks(prev =>
       prev.filter(t => t.id !== dtstTrainTaskToDelete.id),
     );
@@ -296,12 +292,12 @@ const Bestcoachtrainpl = () => {
     const lower = dtstTrainSearch.trim().toLowerCase();
     return dtstTrainSessions
       .filter(s => dtstTrainSameDay(new Date(s.dateISO), dtstTrainSelectedDate))
-      .filter(s =>
-        !lower
-          ? true
-          : (s.title + ' ' + s.teamName + ' ' + s.location)
-              .toLowerCase()
-              .includes(lower),
+      .filter(
+        s =>
+          !lower ||
+          (s.title + ' ' + s.teamName + ' ' + s.location)
+            .toLowerCase()
+            .includes(lower),
       )
       .sort((a, b) => new Date(a.dateISO) - new Date(b.dateISO));
   }, [dtstTrainSessions, dtstTrainSelectedDate, dtstTrainSearch]);
@@ -376,14 +372,14 @@ const Bestcoachtrainpl = () => {
   );
 
   const dtstTrainEmptyTodo = () => (
-    <View style={{ alignItems: 'center', marginTop: 80 }}>
+    <View style={{ alignItems: 'center', marginTop: 80, marginBottom: 100 }}>
       <Image source={require('../../assets/images/trainempt.png')} />
       <Text style={dtstTrainStyles.dtstTrainEmptyText}>
         No tasks yet. Add your first one to stay organized!
       </Text>
       <TouchableOpacity
         activeOpacity={0.7}
-        style={dtstTrainStyles.dtstTrainAddButtonEmpty}
+        style={[dtstTrainStyles.dtstTrainAddButtonEmpty]}
         onPress={() => dtstTrainSetTaskModal(true)}
       >
         <Image source={require('../../assets/images/trainadd.png')} />
@@ -393,16 +389,7 @@ const Bestcoachtrainpl = () => {
 
   return (
     <Bestcoachtrainlay>
-      <View
-        style={[
-          dtstTrainStyles.dtstTrainContainer,
-          (dtstTrainSessionModal ||
-            dtstTrainDeleteSessionModal ||
-            dtstTrainTaskModal ||
-            dtstTrainDeleteTaskModal) &&
-            Platform.OS === 'android' && { filter: 'blur(2px)' },
-        ]}
-      >
+      <View style={[dtstTrainStyles.dtstTrainContainer]}>
         <Text style={dtstTrainStyles.dtstTrainTitle}>PLAN</Text>
 
         <View style={dtstTrainStyles.dtstTrainTabsRow}>
@@ -494,9 +481,8 @@ const Bestcoachtrainpl = () => {
               })}
             </View>
 
-            {dtstTrainSessionsForDay.length === 0 ? (
-              dtstTrainEmptyCalendar()
-            ) : (
+            <View>
+              {dtstTrainSessionsForDay.length === 0 && dtstTrainEmptyCalendar()}
               <FlatList
                 data={dtstTrainSessionsForDay}
                 keyExtractor={i => i.id}
@@ -505,7 +491,7 @@ const Bestcoachtrainpl = () => {
                 contentContainerStyle={{ paddingBottom: 140 }}
                 scrollEnabled={false}
               />
-            )}
+            </View>
           </>
         ) : (
           <>
@@ -517,49 +503,51 @@ const Bestcoachtrainpl = () => {
                 contentContainerStyle={{ paddingBottom: 140 }}
                 showsVerticalScrollIndicator={false}
               >
-                {Object.entries(dtstTrainTasksGrouped).map(([key, list]) => {
-                  const [y, m, d] = key.split('-').map(n => parseInt(n, 10));
-                  const dt = new Date(y, m - 1, d);
-                  return (
-                    <View key={key} style={{ marginBottom: 14 }}>
-                      <Text style={dtstTrainStyles.dtstTrainSectionTitle}>
-                        {dtstTrainPad(dt.getDate())} {dtstTrainMonthShort(dt)}
-                      </Text>
-
-                      {list.map(t => (
-                        <Pressable
-                          key={t.id}
-                          onLongPress={() => dtstTrainConfirmDeleteTask(t)}
-                          style={dtstTrainStyles.dtstTrainTaskCard}
-                        >
-                          <TouchableOpacity
-                            style={[
-                              dtstTrainStyles.dtstTrainTaskCircle,
-                              t.done && dtstTrainStyles.dtstTrainTaskCircleDone,
-                            ]}
-                            onPress={() => dtstTrainToggleTask(t.id)}
+                {Object.entries(dtstTrainTasksGrouped)
+                  .sort(([aKey], [bKey]) => new Date(bKey) - new Date(aKey))
+                  .map(([key, list]) => {
+                    const [y, m, d] = key.split('-').map(n => parseInt(n, 10));
+                    const dt = new Date(y, m - 1, d);
+                    return (
+                      <View key={key} style={{ marginBottom: 14 }}>
+                        <Text style={dtstTrainStyles.dtstTrainSectionTitle}>
+                          {dtstTrainPad(dt.getDate())} {dtstTrainMonthShort(dt)}
+                        </Text>
+                        {list.map(t => (
+                          <Pressable
+                            key={t.id}
+                            onLongPress={() => dtstTrainConfirmDeleteTask(t)}
+                            style={dtstTrainStyles.dtstTrainTaskCard}
                           >
-                            {t.done && (
-                              <Image
-                                source={require('../../assets/images/traincheck.png')}
-                                style={{ tintColor: '#FFBF31' }}
-                              />
-                            )}
-                          </TouchableOpacity>
-                          <Text
-                            style={[
-                              dtstTrainStyles.dtstTrainTaskText,
-                              t.done && dtstTrainStyles.dtstTrainTaskTextDone,
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {t.text}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  );
-                })}
+                            <TouchableOpacity
+                              style={[
+                                dtstTrainStyles.dtstTrainTaskCircle,
+                                t.done &&
+                                  dtstTrainStyles.dtstTrainTaskCircleDone,
+                              ]}
+                              onPress={() => dtstTrainToggleTask(t.id)}
+                            >
+                              {t.done && (
+                                <Image
+                                  source={require('../../assets/images/traincheck.png')}
+                                  style={{ tintColor: '#FFBF31' }}
+                                />
+                              )}
+                            </TouchableOpacity>
+                            <Text
+                              style={[
+                                dtstTrainStyles.dtstTrainTaskText,
+                                t.done && dtstTrainStyles.dtstTrainTaskTextDone,
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {t.text}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    );
+                  })}
               </ScrollView>
             )}
           </>
@@ -571,9 +559,7 @@ const Bestcoachtrainpl = () => {
           <View style={{ position: 'absolute', bottom: 140, right: 24 }}>
             <TouchableOpacity
               style={dtstTrainStyles.dtstTrainInlinePlus}
-              onPress={() => {
-                dtstTrainSetTaskModal(true);
-              }}
+              onPress={() => dtstTrainSetTaskModal(true)}
             >
               <Image source={require('../../assets/images/trainadd.png')} />
             </TouchableOpacity>
@@ -629,7 +615,7 @@ const Bestcoachtrainpl = () => {
                 </Text>
                 <Image
                   source={require('../../assets/images/traindropdown.png')}
-                  style={{ width: 18, height: 18, tintColor: '#FFFFFFB2' }}
+                  style={{ width: 18, height: 18, tintColor: '#FFFFFF' }}
                 />
               </TouchableOpacity>
               {dtstTrainSportDropdown && (
@@ -662,100 +648,122 @@ const Bestcoachtrainpl = () => {
             <View
               style={{ width: '100%', position: 'relative', marginBottom: 12 }}
             >
-              <TouchableOpacity
-                style={[
-                  dtstTrainStyles.dtstTrainModalSelect,
-                  dtstTrainTeamDropdown && {
-                    borderBottomLeftRadius: 0,
-                    borderBottomRightRadius: 0,
-                  },
-                ]}
-                onPress={() => {
-                  dtstTrainSetTeamDropdown(p => !p);
-                  dtstTrainSetSportDropdown(false);
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={dtstTrainStyles.dtstTrainModalSelectText}>
-                  {dtstTrainTeamId
-                    ? dtstTrainTeams.find(t => t.id === dtstTrainTeamId)?.name
-                    : 'Team'}
-                </Text>
-                <Image
-                  source={require('../../assets/images/traindropdown.png')}
-                  style={{ width: 18, height: 18, tintColor: '#FFFFFF' }}
+              {dtstTrainTeams.length === 0 ? (
+                <TextInput
+                  placeholder="Team name"
+                  value={dtstTrainTeamId}
+                  onChangeText={dtstTrainSetTeamId}
+                  placeholderTextColor="#FFFFFF"
+                  style={dtstTrainStyles.dtstTrainModalInput}
                 />
-              </TouchableOpacity>
-              {dtstTrainTeamDropdown && (
-                <View style={dtstTrainStyles.dtstTrainDropdown}>
-                  <ScrollView style={{ maxHeight: 200 }}>
-                    {dtstTrainTeams.map(t => (
-                      <TouchableOpacity
-                        key={t.id}
-                        style={[
-                          dtstTrainStyles.dtstTrainDropdownItem,
-                          dtstTrainTeamId === t.id && {
-                            backgroundColor: '#002C8A',
-                          },
-                        ]}
-                        onPress={() => {
-                          dtstTrainSetTeamId(t.id);
-                          dtstTrainSetTeamDropdown(false);
-                        }}
-                      >
-                        <Text style={dtstTrainStyles.dtstTrainDropdownText}>
-                          {t.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={[
+                      dtstTrainStyles.dtstTrainModalSelect,
+                      dtstTrainTeamDropdown && {
+                        borderBottomLeftRadius: 0,
+                        borderBottomRightRadius: 0,
+                      },
+                    ]}
+                    onPress={() => {
+                      dtstTrainSetTeamDropdown(p => !p);
+                      dtstTrainSetSportDropdown(false);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={dtstTrainStyles.dtstTrainModalSelectText}>
+                      {dtstTrainTeamId
+                        ? dtstTrainTeams.find(t => t.id === dtstTrainTeamId)
+                            ?.name || dtstTrainTeamId
+                        : 'Team'}
+                    </Text>
+                    <Image
+                      source={require('../../assets/images/traindropdown.png')}
+                      style={{ width: 18, height: 18, tintColor: '#FFFFFF' }}
+                    />
+                  </TouchableOpacity>
+                  {dtstTrainTeamDropdown && (
+                    <View style={dtstTrainStyles.dtstTrainDropdown}>
+                      <ScrollView style={{ maxHeight: 200 }}>
+                        {dtstTrainTeams.map(t => (
+                          <TouchableOpacity
+                            key={t.id}
+                            style={[
+                              dtstTrainStyles.dtstTrainDropdownItem,
+                              dtstTrainTeamId === t.id && {
+                                backgroundColor: '#002C8A',
+                              },
+                            ]}
+                            onPress={() => {
+                              dtstTrainSetTeamId(t.id);
+                              dtstTrainSetTeamDropdown(false);
+                            }}
+                          >
+                            <Text style={dtstTrainStyles.dtstTrainDropdownText}>
+                              {t.name}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </>
               )}
             </View>
 
             <TouchableOpacity
               style={dtstTrainStyles.dtstTrainModalSelect}
               activeOpacity={0.8}
-              onPress={() => dtstTrainSetPickerShown(true)}
+              onPress={() => {
+                if (Platform.OS === 'android') {
+                  DateTimePickerAndroid.open({
+                    value: dtstTrainDateTime,
+                    mode: 'datetime',
+                    is24Hour: true,
+                    onChange: (event, date) => {
+                      if (event.type === 'set' && date) {
+                        dtstTrainSetDateTime(date);
+                      }
+                    },
+                  });
+                } else {
+                  dtstTrainSetPickerShown(true);
+                }
+              }}
             >
               <Text style={dtstTrainStyles.dtstTrainModalSelectText}>
-                {dtstTrainDateTime
-                  ? dtstTrainFormatDateDisplay(dtstTrainDateTime)
-                  : 'Date & Time:'}
+                {dtstTrainFormatDateDisplay(dtstTrainDateTime)}
               </Text>
               <Image
                 source={require('../../assets/images/traincalend.png')}
                 style={{ width: 18, height: 18, tintColor: '#FFFFFF' }}
               />
             </TouchableOpacity>
-            {dtstTrainPickerShown && (
+
+            {Platform.OS === 'ios' && dtstTrainPickerShown && (
               <>
                 <DateTimePicker
                   value={dtstTrainDateTime}
                   mode="datetime"
-                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                  onChange={(e, d) => {
-                    if (Platform.OS !== 'ios') dtstTrainSetPickerShown(false);
-                    if (d) dtstTrainSetDateTime(d);
-                  }}
+                  display="inline"
+                  onChange={(e, d) => d && dtstTrainSetDateTime(d)}
                 />
-                {Platform.OS === 'ios' && (
-                  <TouchableOpacity
-                    style={[
-                      dtstTrainStyles.dtstTrainModalButton,
-                      {
-                        backgroundColor: '#FFBF31',
-                        marginTop: 8,
-                        marginBottom: 12,
-                      },
-                    ]}
-                    onPress={() => dtstTrainSetPickerShown(false)}
-                  >
-                    <Text style={dtstTrainStyles.dtstTrainModalButtonText}>
-                      Done
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                <TouchableOpacity
+                  style={[
+                    dtstTrainStyles.dtstTrainModalButton,
+                    {
+                      backgroundColor: '#FFBF31',
+                      marginTop: 8,
+                      marginBottom: 12,
+                    },
+                  ]}
+                  onPress={() => dtstTrainSetPickerShown(false)}
+                >
+                  <Text style={dtstTrainStyles.dtstTrainModalButtonText}>
+                    Done
+                  </Text>
+                </TouchableOpacity>
               </>
             )}
 
@@ -806,9 +814,7 @@ const Bestcoachtrainpl = () => {
                 { backgroundColor: '#FFBF31', marginTop: 6 },
                 (!dtstTrainTitle ||
                   !dtstTrainSportType ||
-                  !dtstTrainTeamId) && {
-                  backgroundColor: '#FFBF31B2',
-                },
+                  !dtstTrainTeamId) && { backgroundColor: '#FFBF31B2' },
               ]}
               onPress={dtstTrainOnSaveSession}
             >
@@ -824,51 +830,13 @@ const Bestcoachtrainpl = () => {
                 dtstTrainSetDateTime(new Date());
                 dtstTrainSetTitle('');
                 dtstTrainSetLocation('');
-                dtstTrainSetRepeat('');
+                dtstTrainSetRepeat(false);
                 dtstTrainSetSportType('');
                 dtstTrainSetTeamId('');
               }}
             >
               <Text style={dtstTrainStyles.dtstTrainModalCancel}>Cancel</Text>
             </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        transparent
-        animationType="fade"
-        visible={dtstTrainDeleteSessionModal}
-      >
-        <View style={dtstTrainStyles.dtstTrainConfirmOverlay}>
-          <View style={dtstTrainStyles.dtstTrainConfirmBox}>
-            <Text style={dtstTrainStyles.dtstTrainConfirmTitle}>
-              Delete This Session?
-            </Text>
-            <Text style={dtstTrainStyles.dtstTrainConfirmMsg}>
-              Are you sure you want to delete this session{'\n'}This action
-              cannot be undone
-            </Text>
-            <View style={dtstTrainStyles.dtstTrainConfirmButtons}>
-              <TouchableOpacity
-                style={dtstTrainStyles.dtstTrainConfirmBtn}
-                onPress={() => {
-                  dtstTrainSetDeleteSessionModal(false);
-                }}
-              >
-                <Text style={dtstTrainStyles.dtstTrainConfirmCancel}>
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={dtstTrainStyles.dtstTrainConfirmBtn}
-                onPress={dtstTrainOnDeleteSession}
-              >
-                <Text style={dtstTrainStyles.dtstTrainConfirmDelete}>
-                  Delete
-                </Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
       </Modal>
@@ -888,7 +856,22 @@ const Bestcoachtrainpl = () => {
 
             <TouchableOpacity
               style={dtstTrainStyles.dtstTrainModalSelect}
-              onPress={() => dtstTrainSetTaskPickerShown(true)}
+              onPress={() => {
+                if (Platform.OS === 'android') {
+                  DateTimePickerAndroid.open({
+                    value: dtstTrainTaskDate,
+                    mode: 'date',
+                    is24Hour: true,
+                    onChange: (event, date) => {
+                      if (event.type === 'set' && date) {
+                        dtstTrainSetTaskDate(date);
+                      }
+                    },
+                  });
+                } else {
+                  dtstTrainSetTaskPickerShown(true);
+                }
+              }}
             >
               <Text style={dtstTrainStyles.dtstTrainModalSelectText}>
                 {`Date: ${dtstTrainTaskDate.toLocaleDateString()}`}
@@ -898,18 +881,30 @@ const Bestcoachtrainpl = () => {
                 style={{ width: 18, height: 18, tintColor: '#FFFFFFB2' }}
               />
             </TouchableOpacity>
-            {dtstTrainTaskPickerShown && (
+
+            {Platform.OS === 'ios' && dtstTrainTaskPickerShown && (
               <>
                 <DateTimePicker
                   value={dtstTrainTaskDate}
                   mode="date"
-                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                  onChange={(e, d) => {
-                    if (Platform.OS !== 'ios')
-                      dtstTrainSetTaskPickerShown(false);
-                    if (d) dtstTrainSetTaskDate(d);
-                  }}
+                  display="inline"
+                  onChange={(e, d) => d && dtstTrainSetTaskDate(d)}
                 />
+                <TouchableOpacity
+                  style={[
+                    dtstTrainStyles.dtstTrainModalButton,
+                    {
+                      backgroundColor: '#FFBF31',
+                      marginTop: 8,
+                      marginBottom: 12,
+                    },
+                  ]}
+                  onPress={() => dtstTrainSetTaskPickerShown(false)}
+                >
+                  <Text style={dtstTrainStyles.dtstTrainModalButtonText}>
+                    Done
+                  </Text>
+                </TouchableOpacity>
               </>
             )}
 
@@ -928,10 +923,7 @@ const Bestcoachtrainpl = () => {
               onPress={() => {
                 dtstTrainSetTaskModal(false);
                 dtstTrainSetTaskText('');
-                dtstTrainSetTaskDate(
-                  new Date(),
-                  dtstTrainSetTaskPickerShown(false),
-                );
+                dtstTrainSetTaskDate(new Date());
               }}
             >
               <Text style={dtstTrainStyles.dtstTrainModalCancel}>Cancel</Text>
@@ -943,31 +935,83 @@ const Bestcoachtrainpl = () => {
       <Modal
         transparent
         animationType="fade"
-        visible={dtstTrainDeleteTaskModal}
+        visible={dtstTrainDeleteSessionModal}
       >
-        <View style={dtstTrainStyles.dtstTrainConfirmOverlay}>
-          <View style={[dtstTrainStyles.dtstTrainConfirmBox]}>
-            <Text style={dtstTrainStyles.dtstTrainConfirmTitle}>
-              Delete Task
+        {Platform.OS === 'ios' && (
+          <BlurView
+            style={dtstTrainStyles.dtstTrainBlur}
+            blurType="dark"
+            blurAmount={4}
+          />
+        )}
+        <View style={dtstTrainStyles.dtstTrainDeleteOverlay}>
+          <View style={dtstTrainStyles.dtstTrainDeleteBox}>
+            <Text style={dtstTrainStyles.dtstTrainDeleteTitle}>
+              Delete session?
             </Text>
-            <Text style={dtstTrainStyles.dtstTrainConfirmMsg}>
-              Are you sure you want to delete this task?{'\n'}This action cannot
-              be undone
+            <Text style={dtstTrainStyles.dtstTrainDeleteMessage}>
+              Are you sure you want to delete this training session?{'\n'}This
+              action cannot be undone.
             </Text>
-            <View style={dtstTrainStyles.dtstTrainConfirmButtons}>
+
+            <View style={dtstTrainStyles.dtstTrainDeleteButtons}>
               <TouchableOpacity
-                style={dtstTrainStyles.dtstTrainConfirmBtn}
-                onPress={() => dtstTrainSetDeleteTaskModal(false)}
+                style={dtstTrainStyles.dtstTrainDeleteCancelBtn}
+                onPress={() => dtstTrainSetDeleteSessionModal(false)}
               >
-                <Text style={dtstTrainStyles.dtstTrainConfirmCancel}>
+                <Text style={dtstTrainStyles.dtstTrainDeleteCancelText}>
                   Cancel
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={dtstTrainStyles.dtstTrainConfirmBtn}
+                style={dtstTrainStyles.dtstTrainDeleteConfirmBtn}
+                onPress={dtstTrainOnDeleteSession}
+              >
+                <Text style={dtstTrainStyles.dtstTrainDeleteConfirmText}>
+                  Delete
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        transparent
+        animationType="fade"
+        visible={dtstTrainDeleteTaskModal}
+      >
+        {Platform.OS === 'ios' && (
+          <BlurView
+            style={dtstTrainStyles.besttrainBlur}
+            blurType="dark"
+            blurAmount={4}
+          />
+        )}
+        <View style={dtstTrainStyles.dtstTrainDeleteOverlay}>
+          <View style={dtstTrainStyles.dtstTrainDeleteBox}>
+            <Text style={dtstTrainStyles.dtstTrainDeleteTitle}>
+              Delete task?
+            </Text>
+            <Text style={dtstTrainStyles.dtstTrainDeleteMessage}>
+              Are you sure you want to delete this task?{'\n'}This action cannot
+              be undone.
+            </Text>
+
+            <View style={dtstTrainStyles.dtstTrainDeleteButtons}>
+              <TouchableOpacity
+                style={dtstTrainStyles.dtstTrainDeleteCancelBtn}
+                onPress={() => dtstTrainSetDeleteTaskModal(false)}
+              >
+                <Text style={dtstTrainStyles.dtstTrainDeleteCancelText}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={dtstTrainStyles.dtstTrainDeleteConfirmBtn}
                 onPress={dtstTrainOnDeleteTask}
               >
-                <Text style={dtstTrainStyles.dtstTrainConfirmDelete}>
+                <Text style={dtstTrainStyles.dtstTrainDeleteConfirmText}>
                   Delete
                 </Text>
               </TouchableOpacity>
@@ -981,12 +1025,19 @@ const Bestcoachtrainpl = () => {
 
 const dtstTrainStyles = StyleSheet.create({
   dtstTrainContainer: {
-    padding: 24,
     flex: 1,
     alignItems: 'center',
+    padding: 24,
     paddingTop: dtstTrainHeight * 0.08,
-    paddingBottom: 120,
   },
+  dtstTrainSectionTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  besttrainBlur: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   dtstTrainTitle: {
     color: '#FFFFFF',
     fontSize: 28,
@@ -1047,26 +1098,63 @@ const dtstTrainStyles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 18,
   },
+  dtstTrainDeleteOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#00000066',
+  },
+  dtstTrainDeleteBox: {
+    width: '80%',
+    backgroundColor: '#F8F8F8',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+  },
+  dtstTrainDeleteTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 10,
+  },
+  dtstTrainDeleteMessage: {
+    color: '#000',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  dtstTrainDeleteButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  dtstTrainDeleteCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderColor: '#ddd',
+    borderRightWidth: 1,
+  },
+  dtstTrainDeleteConfirmBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderColor: '#ddd',
+  },
+  dtstTrainDeleteCancelText: {
+    fontWeight: '600',
+    color: '#000',
+  },
+  dtstTrainDeleteConfirmText: {
+    fontWeight: '600',
+    color: '#E53935',
+  },
+
   dtstTrainStripDayNumberActive: { color: '#FFFFFF' },
   dtstTrainStripWeek: { color: '#BFD0FF', marginTop: 2, fontSize: 12 },
   dtstTrainStripWeekActive: { color: '#EAF0FF' },
-  dtstTrainSearchInput: {
-    width: '100%',
-    height: 50,
-    backgroundColor: '#001B61',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingLeft: 45,
-    color: '#FFFFFF',
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  dtstTrainSearchIcon: {
-    position: 'absolute',
-    top: 15,
-    left: 15,
-    tintColor: '#FFFFFF',
-  },
   dtstTrainSessionCard: {
     backgroundColor: '#0C2C79',
     borderRadius: 14,
@@ -1086,24 +1174,14 @@ const dtstTrainStyles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
-  dtstTrainSessionTitleText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  dtstTrainSessionDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 50,
-  },
+  dtstTrainSessionTitleText: { color: '#FFFFFF', fontWeight: '700' },
+  dtstTrainSessionDot: { width: 32, height: 32, borderRadius: 50 },
   dtstTrainTeamRow: {
     marginTop: 5,
     backgroundColor: '#000C2A',
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   dtstTrainTeamRowText: { color: '#FFBF31', fontWeight: '700' },
   dtstTrainTimeText: {
@@ -1111,10 +1189,6 @@ const dtstTrainStyles = StyleSheet.create({
     color: '#FFF',
     fontWeight: '500',
     textAlign: 'center',
-  },
-  dtstTrainNotesText: {
-    marginTop: 6,
-    color: '#9FB2FF',
   },
   dtstTrainEmptyText: {
     color: '#FFFFFF',
@@ -1133,18 +1207,15 @@ const dtstTrainStyles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 24,
   },
-  dtstTrainFab: {
-    width: 48,
-    height: 48,
+  dtstTrainInlinePlus: {
+    width: 44,
+    height: 44,
     backgroundColor: '#FFBF31',
-    borderRadius: 16,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'absolute',
-    bottom: 140,
-    right: 24,
+    marginTop: 6,
   },
-  dtstTrainBlur: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   dtstTrainModalOverlay: {
     flex: 1,
     backgroundColor: '#00000054',
@@ -1208,7 +1279,6 @@ const dtstTrainStyles = StyleSheet.create({
   },
   dtstTrainSuffixText: {
     color: '#FFFFFF',
-    marginLeft: 10,
     position: 'absolute',
     right: 16,
     fontSize: 16,
@@ -1244,49 +1314,6 @@ const dtstTrainStyles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
-  dtstTrainConfirmOverlay: {
-    flex: 1,
-    backgroundColor: '#00000088',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dtstTrainConfirmBox: {
-    width: '80%',
-    backgroundColor: '#F8F8F8',
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center',
-  },
-  dtstTrainConfirmTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#000',
-    marginBottom: 10,
-  },
-  dtstTrainConfirmMsg: {
-    color: '#444',
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  dtstTrainConfirmButtons: { flexDirection: 'row', width: '100%' },
-  dtstTrainConfirmBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderColor: '#ddd',
-    ...(Platform.OS === 'ios' ? {} : { borderRightWidth: 1 }),
-  },
-  dtstTrainConfirmCancel: { fontWeight: '600', color: '#000' },
-  dtstTrainConfirmDelete: { fontWeight: '600', color: '#E53935' },
-  dtstTrainSectionTitle: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 16,
-    marginTop: 10,
-    marginBottom: 10,
-  },
   dtstTrainTaskCard: {
     backgroundColor: '#0C2C79',
     borderRadius: 14,
@@ -1305,22 +1332,11 @@ const dtstTrainStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  dtstTrainTaskCircleDone: {
-    borderColor: '#FFBF31',
-  },
+  dtstTrainTaskCircleDone: { borderColor: '#FFBF31' },
   dtstTrainTaskText: { color: '#FFFFFF', flex: 1 },
   dtstTrainTaskTextDone: {
     color: '#FFBF31',
     textDecorationLine: 'line-through',
-  },
-  dtstTrainInlinePlus: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#FFBF31',
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 6,
   },
 });
 

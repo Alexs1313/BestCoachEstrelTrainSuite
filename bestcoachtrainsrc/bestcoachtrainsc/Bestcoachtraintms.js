@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Dimensions,
   Image,
@@ -14,9 +14,10 @@ import {
 } from 'react-native';
 import Bestcoachtrainlay from '../bestcoachtraincmp/Bestcoachtrainlay';
 import { useStore } from '../bestcoachtrainst/bestCoachTrainContext';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { BlurView } from '@react-native-community/blur';
 import Toast from 'react-native-toast-message';
+import Orientation from 'react-native-orientation-locker';
 
 const { height } = Dimensions.get('window');
 
@@ -48,6 +49,16 @@ const Bestcoachtraintms = () => {
   const [bestTrainSportType, setBestTrainSportType] = useState('');
   const [bestTrainSearchText, setBestTrainSearchText] = useState('');
   const navigation = useNavigation();
+
+  useFocusEffect(
+    useCallback(() => {
+      Platform.OS === 'android' &&
+        (bestTrainModalVisible || bestTrainDeleteModalVisible) &&
+        Orientation.lockToPortrait();
+
+      return () => Orientation.unlockAllOrientations();
+    }, [bestTrainModalVisible, bestTrainDeleteModalVisible]),
+  );
 
   const bestTrainHandleSaveTeam = () => {
     if (!bestTrainTeamName.trim() || !bestTrainSportType.trim()) return;

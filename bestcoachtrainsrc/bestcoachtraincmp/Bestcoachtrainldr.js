@@ -1,5 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Image, Text, StyleSheet, Animated, Easing } from 'react-native';
+import {
+  View,
+  Image,
+  Text,
+  StyleSheet,
+  Animated,
+  Easing,
+  Platform,
+} from 'react-native';
 import Bestcoachtrainlay from './Bestcoachtrainlay';
 
 const Bestcoachtrainldr = () => {
@@ -26,7 +34,7 @@ const Bestcoachtrainldr = () => {
           useNativeDriver: true,
         }),
       ]).start();
-    }, 1800);
+    }, 2200);
 
     return () => clearTimeout(timer);
   }, []);
@@ -42,8 +50,14 @@ const Bestcoachtrainldr = () => {
               transform: [{ translateY: translateYAnim }],
             }}
           >
-            <Text style={styles.besttraintext}>Best Coach:</Text>
-            <Text style={styles.besttrainsubttl}>Estrel TrainSuite</Text>
+            {Platform.OS === 'ios' ? (
+              <>
+                <Text style={styles.besttraintext}>Best Coach:</Text>
+                <Text style={styles.besttrainsubttl}>Estrel TrainSuite</Text>
+              </>
+            ) : (
+              <Text style={styles.besttraintext}>Best Coach: Win Day</Text>
+            )}
           </Animated.View>
         )}
       </View>
