@@ -56,7 +56,7 @@ const Bestcoachtrainldr = () => {
                 <Text style={styles.besttrainsubttl}>Estrel TrainSuite</Text>
               </>
             ) : (
-              <Text style={styles.besttraintext}>Best Coach: Win Day</Text>
+              <Text style={styles.besttraintext}>Coach Planner: Win Day</Text>
             )}
           </Animated.View>
         )}
